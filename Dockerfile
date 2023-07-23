@@ -18,7 +18,8 @@ COPY ./verify/verify /app/verify/verify
 COPY ./db/wait-for /app/wait-for
 COPY ./LICENSES /app/LICENSES
 
-ADD ./src/main/resources/template /app/template
+ADD ./src/main/resources/template /app/templatedxdiag
+
 
 RUN chmod +x /app/wait-for /app/verify/verify  \
     && apt-get update  \

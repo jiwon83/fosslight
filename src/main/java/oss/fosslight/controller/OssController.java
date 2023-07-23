@@ -75,7 +75,7 @@ public class OssController extends CoTopComponent{
 	@GetMapping(value={OSS.LIST}, produces = "text/html; charset=utf-8")
 	public String list(HttpServletRequest req, HttpServletResponse res, Model model){
 		OssMaster searchBean = null;
-		
+
 		if (!CoConstDef.FLAG_YES.equals(req.getParameter("gnbF"))) {
 			deleteSession(SESSION_KEY_SEARCH);
 			searchBean = searchService.getOssSearchFilter(loginUserName());
@@ -84,37 +84,43 @@ public class OssController extends CoTopComponent{
 			}
 		} else if (getSessionObject(SESSION_KEY_SEARCH) != null) {
 			searchBean = (OssMaster) getSessionObject(SESSION_KEY_SEARCH);
-			
+
 			if (searchBean != null && searchBean.getCopyrights() != null && searchBean.getCopyrights().length > 0) {
 				String _str = "";
-				
+
 				for (String s : searchBean.getCopyrights()) {
 					if (!isEmpty(_str)) {
 						_str += "\r\n";
 					}
 					_str += s;
 				}
-				
+
 				searchBean.setCopyright(_str);
 			}
 		}
-		
+
 		if (req.getParameter("ossName") != null) { // OSS List 로드 시 Default로 ossName 검색조건에 추가
 			if (searchBean == null) {
 				searchBean = new OssMaster();
 			}
-			
+
 			searchBean.setOssName(req.getParameter("ossName"));
 		}
-		
+
 		if (getSessionObject("defaultLoadYn") != null) {
 			model.addAttribute("defaultLoadYn", CoConstDef.FLAG_YES);
-			
+
 			deleteSession("defaultLoadYn");
 		}
-		
+
 		model.addAttribute("searchBean", searchBean);
-		
+		//fix
+		Map<String, Object> map = new HashMap<>();
+		map.put("rows", new ArrayList<>());
+		//ossMaster > ComBean [curPage=1, pageListSize=15, blockSize=10, totListSize=0, totBlockSize=0, startIndex=0, schCondition=null, schValue=null, sortField=, sortOrder=, schQueryString=null, hotYn=N]
+		ComBean ossMaster = new ComBean();
+		map = getStringObjectMap(ossMaster, map);
+		model.addAttribute("map", map);
 		return OSS.LIST_JSP;
 	}
 	
@@ -151,6 +157,8 @@ public class OssController extends CoTopComponent{
 			, Model model){
 		
 		Map<String, Object> map = null;
+
+		System.out.println("ossMaster > "+ossMaster.toString());
 		
 		if ("Y".equals(req.getParameter("ignoreSearchFlag"))) {
 			map = new HashMap<>();
@@ -186,18 +194,23 @@ public class OssController extends CoTopComponent{
 		} else if (getSessionObject(SESSION_KEY_SEARCH) != null) {
 			ossMaster = (OssMaster) getSessionObject(SESSION_KEY_SEARCH);
 		}
-		
+
+		map = getStringObjectMap(ossMaster, map);
+		return makeJsonResponseHeader(map);
+	}
+
+	private Map<String, Object> getStringObjectMap(OssMaster ossMaster, Map<String, Object> map) {
 		ossMaster.setSearchFlag(CoConstDef.FLAG_YES); // 화면 검색일 경우 "Y" export시 "N"
-		
+
 		try {
 			map = ossService.getOssMasterList(ossMaster);
 		} catch(Exception e) {
 			log.error(e.getMessage(), e);
 		}
 		CustomXssFilter.ossMasterFilter((List<OssMaster>) map.get("rows"));
-		return makeJsonResponseHeader(map);
+		return map;
 	}
-	
+
 	@GetMapping(value=OSS.AUTOCOMPLETE_AJAX)
 	public @ResponseBody ResponseEntity<Object> autoCompleteAjax(
 			OssMaster ossMaster
@@ -755,7 +768,7 @@ public class OssController extends CoTopComponent{
 		return makeJsonResponseHeader(result);
 	}
 	
-	@PostMapping(value=OSS.DELTE_COMMENT)
+	@PostMapping(value=OSS.DELETE_COMMENT)
 	public @ResponseBody ResponseEntity<Object> deleteComment(
 			@ModelAttribute CommentsHistory commentsHistory
 			, HttpServletRequest req
